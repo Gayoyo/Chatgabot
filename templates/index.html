@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 350px;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-message {
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background: #007bff;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background: #f1f1f1;
+            color: black;
+            align-self: flex-start;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background: #f9f9f9;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        .chat-input button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            margin-left: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+
+        #learning-section {
+            display: none;
+            padding: 15px;
+            background: white;
+            text-align: center;
+            margin-top: 10px;
+            border-radius: 10px;
+        }
+
+        #learning-section input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #learning-section button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        #learning-section button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">Gabot</div>
+        <div id="chatbox" class="chat-box"></div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Ketik pesan..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+        <div id="learning-section">
+            <p>Bot belum tahu jawabannya, ajarkan di sini:</p>
+            <input type="text" id="learn-question" placeholder="Pertanyaan" readonly>
+            <input type="text" id="learn-answer" placeholder="Jawaban">
+            <button onclick="teachBot()">Ajarkan</button>
+        </div>
+    </div>
+
+    <script>
+        function handleKeyPress(event) {
+            if (event.key === "Enter") sendMessage();
+        }
+
+        function sendMessage() {
+            let inputField = document.getElementById("userInput");
+            let chatbox = document.getElementById("chatbox");
+            let userText = inputField.value.trim();
+
+            if (userText === "") return;
+
+            // Tambahkan pesan pengguna ke chatbox
+            chatbox.innerHTML += `<div class="chat-message user-message">${userText}</div>`;
+            inputField.value = "";
+
+            // Kirim pesan ke server chatbot
+            fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let botMessage = `<div class="chat-message bot-message">${data.response}</div>`;
+                chatbox.innerHTML += botMessage;
+                chatbox.scrollTop = chatbox.scrollHeight;
+
+                // Jika bot tidak tahu jawabannya, tampilkan form belajar
+                if (data.response.includes("Saya belum tahu jawabannya")) {
+                    document.getElementById("learning-section").style.display = "block";
+                    document.getElementById("learn-question").value = userText;
+                }
+            })
+            .catch(error => {
+                chatbox.innerHTML += `<div class="chat-message bot-message" style="color:red;">Error: Tidak dapat terhubung ke server</div>`;
+            });
+        }
+
+        function teachBot() {
+            let question = document.getElementById("learn-question").value;
+            let answer = document.getElementById("learn-answer").value;
+
+            if (answer.trim() === "") {
+                alert("Harap isi jawaban sebelum mengajarkan bot.");
+                return;
+            }
+
+            fetch("/learn", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: question, answer: answer })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let chatbox = document.getElementById("chatbox");
+                chatbox.innerHTML += `<div class="chat-message bot-message">${data.response}</div>`;
+                document.getElementById("learning-section").style.display = "none";
+                document.getElementById("learn-answer").value = "";
+            })
+            .catch(error => {
+                alert("Gagal mengajarkan bot. Coba lagi nanti.");
+            });
+        }
+    </script>
+
+</body>
+</html>
