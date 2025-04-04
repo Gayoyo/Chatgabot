@@ -1,0 +1,6 @@
+flask
+flask_sqlalchemy
+transformers
+torch
+gunicorn
+web: gunicorn chatbot:app
